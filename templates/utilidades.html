@@ -1,0 +1,115 @@
+{% extends "admin/base_site.html" %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<style>
+    .main-header-custom { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid #dee2e6; margin-bottom: 25px; }
+    .stat-card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: transform 0.2s ease; background: #fff; }
+    .stat-card:hover { transform: translateY(-3px); }
+    .icon-shape { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+    .bg-blue-light { background-color: #e8f2ff; color: #0066cc; }
+    .bg-green-light { background-color: #e6f8edd1; color: #28a745; }
+    .bg-purple-light { background-color: #f3e8ff; color: #6f42c1; }
+    .bg-teal-light { background-color: #e6fffa; color: #00a884; }
+    .bg-emerald-light { background-color: #d1e7dd; color: #0f5132; }
+    .text-muted-sm { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #8898aa; }
+    .val-display { font-size: 1.85rem; font-weight: 700; margin: 8px 0 4px 0; }
+    .btn-return { border-radius: 8px; font-weight: 600; padding: 8px 16px; font-size: 0.875rem; background-color: #ffffff; border: 1px solid #ced4da; color: #495057; }
+</style>
+
+<div class="container-fluid px-2 py-2">
+    <div class="main-header-custom">
+        <div>
+            <h3 class="font-weight-bold mb-1" style="color: #1e293b;"><i class="fas fa-chart-pie text-primary mr-2" style="margin-right: 8px;"></i>Reporte de Utilidades y Fondo</h3>
+            <span class="text-muted small">Desglose de capital en circulación, retornos y utilidad real</span>
+        </div>
+        <a href="/admin/" class="btn btn-return shadow-sm">
+            <i class="fas fa-arrow-left mr-1"></i> Regresar al Inicio
+        </a>
+    </div>
+
+    <!-- FILA 1: ESTADO DEL CAPITAL -->
+    <div class="row">
+        <!-- Capital Disponible -->
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted-sm">Capital Disponible para Prestar</span>
+                    <div class="icon-shape bg-emerald-light"><i class="fas fa-cash-register"></i></div>
+                </div>
+                <div class="val-display text-success">${{ capital_disponible }}</div>
+                <div class="text-muted small"><i class="fas fa-piggy-bank mr-1 text-success" style="margin-right: 8px;"></i>Capital Base: <strong>${{ capital_base_inicial }}</strong></div>
+            </div>
+        </div>
+
+        <!-- Capital en la Calle / Prestado -->
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted-sm">Capital en Calle (Adeudado)</span>
+                    <div class="icon-shape bg-blue-light"><i class="fas fa-wallet"></i></div>
+                </div>
+                <div class="val-display text-dark">${{ capital_en_calle }}</div>
+                <div class="text-muted small"><i class="fas fa-file-contract mr-1 text-primary" style="margin-right: 8px;"></i><strong>{{ total_prestamos_activos }}</strong> préstamo(s) activo(s)</div>
+            </div>
+        </div>
+
+        <!-- CARD DE CAPITAL RETORNADO -->
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted-sm">Capital Retornado</span>
+                    <div class="icon-shape bg-teal-light"><i class="fas fa-undo"></i></div>
+                </div>
+                <div class="val-display text-info">${{ capital_retornado }}</div>
+                <div class="text-muted small"><i class="fas fa-coins mr-1 text-info" style="margin-right: 8px;"></i>Abonos directos al capital de origen</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 2: UTILIDADES REALES Y PROYECTADAS -->
+    <div class="row">
+        <!-- CARD DE UTILIDAD REAL -->
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted-sm">Utilidad Real Cobrada</span>
+                    <div class="icon-shape bg-green-light"><i class="fas fa-hand-holding-usd"></i></div>
+                </div>
+                <div class="val-display text-success">${{ utilidad_real_cobrada }}</div>
+                <div class="text-muted small"><i class="fas fa-check-circle mr-1 text-success" style="margin-right: 8px;"></i>Ganancia efectiva en caja (Interés cobrado)</div>
+            </div>
+        </div>
+
+        <!-- Proyección Quincenal Esperada -->
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted-sm">Proyección Quincenal (Esperada)</span>
+                    <div class="icon-shape bg-purple-light"><i class="fas fa-chart-line"></i></div>
+                </div>
+                <div class="val-display" style="color: #6f42c1;">${{ utilidad_quincenal_esperada }}</div>
+                <div class="text-muted small">
+    <i class="fas fa-clock" style="color: #6f42c1; margin-right: 8px;"></i>
+    Estimado quincenal préstamos vigentes
+</div>
+            </div>
+        </div>
+
+        <!-- Proyección Mensual Esperada -->
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted-sm">Proyección Mensual (Esperada)</span>
+                    <div class="icon-shape bg-purple-light"><i class="fas fa-calendar-alt"></i></div>
+                </div>
+                <div class="val-display" style="color: #6f42c1;">${{ utilidad_mensual_esperada }}</div>
+                <div class="text-muted small">
+    <i class="fas fa-calendar-alt mr-1" style="color: #6f42c1; margin-right: 8px;"></i>
+    Calculado a 2 quincenas</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

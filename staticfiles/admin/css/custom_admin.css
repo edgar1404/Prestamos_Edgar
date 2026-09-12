@@ -1,0 +1,61 @@
+/* ==============================================================================
+   HEADER GLOBAL (BARRA SUPERIOR)
+   ============================================================================== */
+.main-header.navbar,
+.main-header.navbar-light,
+.main-header.navbar-white,
+nav.navbar {
+    background-color: #0a192f !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Enlaces superiores e iconos de la barra */
+.main-header .nav-link,
+.main-header .nav-link i,
+.main-header .navbar-nav .nav-link {
+    color: #ffffff !important;
+}
+
+/* ==============================================================================
+   BUSCADOR (UNIFICADO EN BLANCO CON LUPA VISIBLE)
+   ============================================================================== */
+/* Contenedor del grupo de entrada */
+.main-header .form-inline .input-group,
+.main-header .input-group {
+    background-color: #ffffff !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* Caja de texto del buscador */
+.main-header .form-control-navbar {
+    background-color: #ffffff !important;
+    color: #0a192f !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.main-header .form-control-navbar::placeholder {
+    color: #64748b !important;
+    opacity: 1 !important;
+}
+
+/* Botón de búsqueda */
+.main-header .input-group-append,
+.main-header .btn-navbar {
+    background-color: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Icono de la lupa en color azul marino */
+.main-header .btn-navbar i,
+.main-header .btn-navbar .fas,
+.main-header .btn-navbar .fa-search {
+    color: #0a192f !important;
+    fill: #0a192f !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    filter: none !important;
+}

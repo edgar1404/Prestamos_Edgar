@@ -1,0 +1,87 @@
+/* Header global */
+.main-header.navbar,
+.main-header.navbar-light,
+.main-header.navbar-white,
+nav.navbar {
+    background-color: #0a192f !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* -------------------------------------------------- */
+/* CONFIGURACIÓN DEL BRANDING (LOGO EN TEXTO)          */
+/* -------------------------------------------------- */
+
+/* Oculta la imagen predeterminada si no se usa */
+.brand-link .brand-image {
+    display: none !important;
+}
+
+/* Contenedor principal alineado y estilizado */
+.brand-link {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 57px !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    background-color: #0a192f !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    text-decoration: none !important;
+}
+
+/* Estilo para el texto de la marca */
+.brand-link .brand-text {
+    font-family: 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    color: #eab308 !important; /* Color dorado */
+    letter-spacing: 0.5px !important;
+    text-transform: none !important; /* Respeta Mayúsculas/Minúsculas exactamente como las escribas */
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* -------------------------------------------------- */
+/* ELEMENTOS DEL HEADER NAVEGACIÓN Y BÚSQUEDA          */
+/* -------------------------------------------------- */
+
+/* Enlaces de navegación superiores */
+.main-header .nav-link,
+.main-header .nav-link i,
+.main-header .navbar-nav .nav-link {
+    color: #ffffff !important;
+}
+
+/* Input del buscador */
+.main-header .form-control-navbar {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-right: none !important;
+}
+
+.main-header .form-control-navbar::placeholder {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Botón contenedor */
+.main-header .input-group-append .btn-navbar,
+.main-header .btn-navbar {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-left: none !important;
+}
+
+/* Icono de la lupa */
+i.fas.fa-search,
+.main-header i.fas.fa-search,
+.main-header .btn-navbar i.fa-search,
+.btn-navbar .fa-search {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    font-size: 14px !important;
+}

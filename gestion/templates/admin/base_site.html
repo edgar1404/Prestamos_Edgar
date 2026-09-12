@@ -1,0 +1,9 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block brand_logo %}
+<a href="{% url 'admin:index' %}" class="brand-link">
+    <img src="{% static 'img/mi_logo.png' %}" alt="Financiera La Dorada" class="brand-image img-circle elevation-3" style="opacity: .8">
+    <span class="brand-text font-weight-light">Financiera La Dorada</span>
+</a>
+{% endblock %}

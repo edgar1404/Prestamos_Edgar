@@ -1,0 +1,185 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div class="container-fluid pl-0 pr-0">
+
+    <!-- CABECERA DE LA SECCIÓN CON BOTÓN DE EXPORTACIÓN -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <h3 class="h4 font-weight-bold text-dark m-0">
+                <i class="fas fa-chart-pie text-primary mr-2"></i>Gestión de Cartera Activa
+            </h3>
+            <small class="text-muted">Vista detallada de créditos, segmentación por estado y reportes.</small>
+        </div>
+        <a href="{% url 'exportar_cartera_pdf' %}?estado={{ estado_filtro }}" target="_blank" class="btn btn-danger shadow-sm font-weight-bold px-3 py-2">
+            <i class="fas fa-file-pdf mr-2"></i>Imprimir / Exportar PDF
+        </a>
+    </div>
+
+    <!-- 1. TARJETAS DE MÉTRICAS SUPERIORES -->
+    <div class="row mb-4">
+        <!-- Capital Colocado -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Capital Colocado</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ capital_colocado|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Capital en Riesgo -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">En Riesgo (+30 Días)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ capital_en_riesgo|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proyección Mensual -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Proyección Mensual</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ proyeccion_interes|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rendimiento Promedio -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Tasa Promedio</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ tasa_promedio|floatformat:1 }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. NAVEGACIÓN POR PESTAÑAS / SEGMENTACIÓN -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-light">
+            <ul class="nav nav-pills card-header-pills">
+                <li class="nav-item mr-1">
+                    <a class="nav-link {% if estado_filtro == 'todos' %}active bg-dark text-white{% else %}btn-outline-secondary text-dark{% endif %}" href="{% url 'cartera_activa' %}?estado=todos">
+                        Todos <span class="badge badge-secondary ml-1">{{ cant_todos }}</span>
+                    </a>
+                </li>
+                <li class="nav-item mr-1">
+                    <a class="nav-link {% if estado_filtro == 'al_dia' %}active bg-success text-white{% else %}btn-outline-success text-dark{% endif %}" href="{% url 'cartera_activa' %}?estado=al_dia">
+                        🟢 Al Día <span class="badge badge-success ml-1">{{ cant_al_dia }}</span>
+                    </a>
+                </li>
+                <li class="nav-item mr-1">
+                    <a class="nav-link {% if estado_filtro == 'pre_mora' %}active bg-warning text-dark{% else %}btn-outline-warning text-dark{% endif %}" href="{% url 'cartera_activa' %}?estado=pre_mora">
+                        🟡 Pre-Mora <span class="badge badge-warning ml-1">{{ cant_pre_mora }}</span>
+                    </a>
+                </li>
+                <li class="nav-item mr-1">
+                    <a class="nav-link {% if estado_filtro == 'riesgo' %}active bg-danger text-white{% else %}btn-outline-danger text-dark{% endif %}" href="{% url 'cartera_activa' %}?estado=riesgo">
+                        🔴 En Riesgo (+30 días) <span class="badge badge-danger ml-1">{{ cant_riesgo }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if estado_filtro == 'refinanciados' %}active bg-info text-white{% else %}btn-outline-info text-dark{% endif %}" href="{% url 'cartera_activa' %}?estado=refinanciados">
+                        🔄 Refinanciados <span class="badge badge-info ml-1">{{ cant_refinanciados }}</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 3. TABLA DETALLADA DE PRÉSTAMOS CON ESTILOS DE VISIBILIDAD MEJORADOS -->
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="color: #0f172a !important;">
+                    <thead class="thead-light">
+                        <tr style="color: #0f172a !important; font-weight: bold;">
+                            <th style="color: #0f172a !important;">Trámite</th>
+                            <th style="color: #0f172a !important;">Cliente</th>
+                            <th style="color: #0f172a !important;">Saldo Pendiente</th>
+                            <th style="color: #0f172a !important;">Tasa Interés</th>
+                            <th style="color: #0f172a !important;">Días Sin Pago</th>
+                            <th style="color: #0f172a !important;">Estado</th>
+                            <th class="text-center" style="color: #0f172a !important;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody style="color: #0f172a !important;">
+                        {% for prestamo in prestamos %}
+                        <tr style="color: #0f172a !important;">
+                            <td style="color: #0f172a !important;"><strong>{{ prestamo.codigo_tramite }}</strong></td>
+                            <td style="color: #0f172a !important; font-weight: 600;">{{ prestamo.cliente.nombre }}</td>
+                            <td style="color: #0f172a !important;"><strong>${{ prestamo.saldo_actual|floatformat:2 }}</strong></td>
+                            <td style="color: #0f172a !important;">{{ prestamo.porcentaje_interes }}%</td>
+                            <td>
+                                {% if prestamo.dias_sin_pagar > 30 %}
+                                    <span class="badge badge-danger" style="font-size: 0.85rem; padding: 6px 10px; background-color: #dc2626 !important; color: #ffffff !important;">{{ prestamo.dias_sin_pagar }} días</span>
+                                {% elif prestamo.dias_sin_pagar > 15 %}
+                                    <span class="badge badge-warning text-dark" style="font-size: 0.85rem; padding: 6px 10px; background-color: #f59e0b !important; color: #0f172a !important;">{{ prestamo.dias_sin_pagar }} días</span>
+                                {% else %}
+                                    <span class="badge badge-success" style="font-size: 0.85rem; padding: 6px 10px; background-color: #16a34a !important; color: #ffffff !important;">{{ prestamo.dias_sin_pagar }} días</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if prestamo.en_riesgo_critico %}
+                                    <span class="badge badge-danger" style="font-size: 0.85rem; padding: 6px 10px; background-color: #dc2626 !important; color: #ffffff !important;">🔴 RIESGO</span>
+                                {% elif prestamo.en_mora %}
+                                    <span class="badge badge-warning text-dark" style="font-size: 0.85rem; padding: 6px 10px; background-color: #f59e0b !important; color: #0f172a !important;">🟡 EN MORA</span>
+                                {% else %}
+                                    <span class="badge badge-success" style="font-size: 0.85rem; padding: 6px 10px; background-color: #16a34a !important; color: #ffffff !important;">🟢 AL DÍA</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="/admin/gestion/transaccion/add/?prestamo={{ prestamo.id }}" class="btn btn-sm btn-outline-primary font-weight-bold" title="Registrar Pago / Transacción">
+                                    <i class="fas fa-dollar-sign"></i> Operar
+                                </a>
+                                <a href="/admin/gestion/prestamo/{{ prestamo.id }}/change/" class="btn btn-sm btn-outline-secondary" title="Ver / Editar Préstamo">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                No hay préstamos registrados en esta categoría.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

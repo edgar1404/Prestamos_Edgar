@@ -1,0 +1,174 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div class="container-fluid pl-0 pr-0">
+
+    <!-- CABECERA DE LA SECCIÓN -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <h3 class="h4 font-weight-bold text-dark m-0">
+                <i class="fas fa-hand-holding-usd text-primary mr-2"></i>Gestión de Socios e Inversionistas
+            </h3>
+            <small class="text-muted">Control de capitales, rendimiento quincenal, comisiones de cobro y deducciones.</small>
+        </div>
+        <a href="/admin/gestion/socio/add/" class="btn btn-primary shadow-sm font-weight-bold px-3 py-2">
+            <i class="fas fa-plus mr-2"></i>Registrar Nuevo Socio
+        </a>
+    </div>
+
+    <!-- 1. TARJETAS DE MÉTRICAS GLOBALES DE SOCIOS -->
+    <div class="row mb-4">
+        <!-- Capital Total Invertido -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Capital Fondeado</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_capital_invertido|default:"0.00"|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-piggy-bank fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Retorno Bruto Acumulado -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Retorno Bruto</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_retorno_bruto|default:"0.00"|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Comisiones Cobrador -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Gestión / Cobranza</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_gestion|default:"0.00"|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-shield fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Neto Total a Pagar -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Liquidación Neta</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_pago_neto|default:"0.00"|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-money-bill-wave fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. TABLA DE LIQUIDACIÓN DE SOCIOS -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-light d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-dark">
+                <i class="fas fa-list-alt mr-2 text-secondary"></i>Detalle de Liquidación por Inversionista
+            </h6>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="color: #0f172a !important;">
+                    <thead class="thead-light">
+                        <tr style="color: #0f172a !important; font-weight: bold;">
+                            <th style="color: #0f172a !important;">Socio / Inversionista</th>
+                            <th style="color: #0f172a !important;">Capital Invertido</th>
+                            <th style="color: #0f172a !important;">Tasa (%)</th>
+                            <th style="color: #0f172a !important;">Retorno Bruto</th>
+                            <th style="color: #0f172a !important;">(-) Comis. Gestión</th>
+                            <th style="color: #0f172a !important;">(-) Otras Deducciones</th>
+                            <th style="color: #0f172a !important;">PAGO NETO</th>
+                            <th class="text-center" style="color: #0f172a !important;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody style="color: #0f172a !important;">
+                        {% for socio in socios %}
+                        <tr style="color: #0f172a !important;">
+                            <td style="color: #0f172a !important;">
+                                <strong>{{ socio.nombre }}</strong>
+                                {% if socio.identificacion %}
+                                    <br><small class="text-muted">ID: {{ socio.identificacion }}</small>
+                                {% endif %}
+                            </td>
+                            <td style="color: #0f172a !important; font-weight: 600;">
+                                ${{ socio.capital_invertido|floatformat:2 }}
+                            </td>
+                            <td style="color: #0f172a !important;">
+                                {{ socio.porcentaje_retorno }}%
+                            </td>
+                            <td style="color: #0f172a !important; font-weight: 600;">
+                                ${{ socio.retorno_bruto|floatformat:2 }}
+                            </td>
+                            <td style="color: #dc2626 !important; font-weight: 600;">
+                                -${{ socio.comision_gestion|floatformat:2 }}
+                            </td>
+                            <td>
+                                {% if socio.deducciones.all %}
+                                    <ul class="list-unstyled mb-0" style="font-size: 0.85rem;">
+                                        {% for ded in socio.deducciones.all %}
+                                            {% if ded.activa %}
+                                                <li style="color: #dc2626 !important;">
+                                                    <i class="fas fa-minus-circle mr-1"></i>{{ ded.concepto }}: <strong>-${{ ded.monto|floatformat:2 }}</strong>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.85rem;">Sin deducciones</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge badge-success" style="font-size: 0.95rem; padding: 8px 12px; background-color: #16a34a !important; color: #ffffff !important;">
+                                    ${{ socio.pago_neto_quincenal|floatformat:2 }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <a href="/admin/gestion/socio/{{ socio.id }}/change/" class="btn btn-sm btn-outline-secondary" title="Editar Socio / Descuentos">
+                                    <i class="fas fa-edit"></i> Ajustar
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                No hay socios registadores en la plataforma.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

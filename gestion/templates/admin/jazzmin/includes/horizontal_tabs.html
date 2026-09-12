@@ -1,0 +1,70 @@
+{% load static jazzmin %}
+
+<!-- Cambia 'background-color: #001f3f' al color que desees (ej. #1f2d3d para navy oscuro, #007bff para azul, etc.) -->
+<nav class="navbar navbar-expand navbar-dark" style="background-color: #001f3f !important; border-bottom: 1px solid rgba(255,255,255,0.1);">
+    <ul class="navbar-nav align-items-center">
+        <!-- BOTÓN SIDEBAR -->
+        <li class="nav-item">
+            <a class="nav-link text-white" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+        </li>
+
+        <!-- LOGO EN EL HEADER SUPERIOR -->
+        <li class="nav-item mr-2 d-flex align-items-center">
+            <a href="{% url 'admin:index' %}" class="d-flex align-items-center text-decoration-none">
+                <img src="{% static 'admin/img/logo.jpg' %}" 
+                     alt="Logo Financiera La Dorada" 
+                     style="height: 32px; width: auto; max-height: 32px; object-fit: contain;">
+            </a>
+        </li>
+
+        <!-- ENLACES SUPERIORES (INICIO) -->
+        {% if jazzmin_settings.topmenu_links %}
+            {% for link in jazzmin_settings.topmenu_links %}
+                <li class="nav-item d-none d-sm-inline-block">
+                    <a href="{{ link.url }}" class="nav-link text-white" {% if link.new_window %}target="_blank"{% endif %}>
+                        {% if link.icon %}<i class="{{ link.icon }}"></i> {% endif %}{{ link.name }}
+                    </a>
+                </li>
+            {% endfor %}
+        {% endif %}
+
+        <!-- BARRA DE BÚSQUEDA -->
+        {% if jazzmin_settings.search_model %}
+            <li class="nav-item d-none d-sm-inline-block ml-2">
+                <form action="{% url 'admin:index' %}" method="get" class="form-inline">
+                    <div class="input-group input-group-sm">
+                        <input class="form-control form-control-navbar" type="search" name="q" placeholder="Buscar Clientes..." aria-label="Search">
+                        <div class="input-group-append">
+                            <button class="btn btn-navbar text-white" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </li>
+        {% endif %}
+    </ul>
+
+    <!-- USUARIO Y MENÚ DERECHO -->
+    <ul class="navbar-nav ml-auto">
+        {% if user.is_authenticated %}
+            <li class="nav-item dropdown user-menu">
+                <a href="#" class="nav-link dropdown-toggle text-white" data-toggle="dropdown">
+                    <span class="d-none d-md-inline">{{ user.get_username }}</span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+                    <a href="{% url 'admin:password_change' %}" class="dropdown-item">
+                        <i class="fas fa-key mr-2"></i> Cambiar contraseña
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <form method="post" action="{% url 'admin:logout' %}" class="form-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item text-danger btn-link">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Cerrar sesión
+                        </button>
+                    </form>
+                </div>
+            </li>
+        {% endif %}
+    </ul>
+</nav>

@@ -1,0 +1,186 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- SECCIÓN PRINCIPAL: DASHBOARD BANCARIO -->
+        <div class="col-lg-9 col-12">
+            
+            <!-- HERO BANNER -->
+            <div class="mb-4" style="
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f766e 100%);
+                border-radius: 14px;
+                padding: 24px 28px;
+                color: #ffffff;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+            ">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 style="font-size: 1.9rem; font-weight: 700; margin-bottom: 4px; color: #ffffff !important;">
+                            <i class="fas fa-university text-warning" style="margin-right: 18px;"></i>Financiera La Dorada
+                        </h1>
+                        <p class="m-0" style="color: #cbd5e1 !important; font-size: 0.92rem;">
+                            Gestión centralizada de capital, colocación de créditos y control de morosidad.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- METRICAS / KPIS FINANCIEROS (VALORES DINÁMICOS) -->
+            <div class="row mb-4">
+                <!-- CARTERA ACTIVA -->
+                <div class="col-md-4 col-sm-6 mb-3">
+                    <a href="{% url 'cartera_activa' %}" style="text-decoration: none; color: inherit;">
+                        <div class="card h-100 p-3 shadow-sm border-0" style="background: rgba(255,255,255,0.95); border-radius: 12px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-uppercase font-weight-bold text-muted" style="font-size: 0.75rem;">Cartera Activa</div>
+                                    <div class="h3 font-weight-bold my-1" style="color: #0f172a;">${{ cartera_activa|floatformat:2|default:"0.00" }}</div>
+                                    <small class="text-success font-weight-bold"><i class="fas fa-arrow-up mr-1 "style="margin-right: 5px;" ></i>Capital prestado</small>
+                                </div>
+                                <div class="p-3 rounded-lg" style="background: #e0f2fe; color: #0284c7; font-size: 1.4rem;">
+                                    <i class="fas fa-wallet"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- COBROS DEL DÍA -->
+                <div class="col-md-4 col-sm-6 mb-3">
+                    <a href="/admin/gestion/transaccion/" style="text-decoration: none; color: inherit;">
+                        <div class="card h-100 p-3 shadow-sm border-0" style="background: rgba(255,255,255,0.95); border-radius: 12px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-uppercase font-weight-bold text-muted" style="font-size: 0.75rem;">Cobros del Día</div>
+                                    <div class="h3 font-weight-bold my-1" style="color: #0f172a;">${{ cobros_dia|floatformat:2|default:"0.00" }}</div>
+                                    <small class="text-muted"><i class="fas fa-clock mr-1" style="margin-right: 5px;"></i>{{ transacciones_hoy|default:"0" }} transacciones hoy</small>
+                                </div>
+                                <div class="p-3 rounded-lg" style="background: #dcfce7; color: #16a34a; font-size: 1.4rem;">
+                                    <i class="fas fa-hand-holding-usd"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- CRÉDITOS EN MORA -->
+                <div class="col-md-4 col-sm-6 mb-3">
+                    <a href="{% url 'cartera_activa' %}?estado=pre_mora" style="text-decoration: none; color: inherit;">
+                        <div class="card h-100 p-3 shadow-sm border-0" style="background: rgba(255,255,255,0.95); border-radius: 12px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-uppercase font-weight-bold text-danger" style="font-size: 0.75rem;">Préstamos en Mora</div>
+                                    <div class="h3 font-weight-bold my-1" style="color: #dc2626;">{{ prestamos_mora|default:"0" }}</div>
+                                    <small class="text-danger font-weight-bold"><i class="fas fa-exclamation-circle mr-1" style="margin-right: 5px;"></i>Ver clientes en mora →</small>
+                                </div>
+                                <div class="p-3 rounded-lg" style="background: #fee2e2; color: #dc2626; font-size: 1.4rem;">
+                                    <i class="fas fa-user-clock"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- ACCIONES RÁPIDAS OPERATIVAS -->
+            <div class="card border-0 shadow-sm mb-4" style="background: rgba(255, 255, 255, 0.95); border-radius: 12px;">
+                <div class="card-header border-0 bg-transparent pt-3 pb-0">
+                    <h5 class="font-weight-bold text-dark m-0" style="font-size: 0.95rem;">
+                        <i class="fas fa-bolt text-warning mr-2"></i>Acciones Rápidas Operativas
+                    </h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-6 mb-2">
+                            <a href="/admin/gestion/cliente/add/" 
+                                class="btn btn-block btn-outline-primary text-left p-2 d-flex align-items-center" 
+                                style="border-radius: 8px; font-weight: 600;">
+                                <i class="fas fa-user-plus" style="margin-right: 12px;"></i> Nuevo Cliente
+                            </a>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <a href="/admin/gestion/prestamo/add/" 
+                                class="btn btn-block btn-outline-success text-left p-2 d-flex align-items-center" 
+                                style="border-radius: 8px; font-weight: 600;">
+                                <i class="fas fa-file-invoice-dollar" style="margin-right: 12px;"></i> Nuevo Préstamo
+                            </a>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <a href="/admin/gestion/transaccion/add/" 
+                                class="btn btn-block btn-outline-info text-left p-2 d-flex align-items-center" 
+                                style="border-radius: 8px; font-weight: 600;">
+                                <i class="fas fa-receipt" style="margin-right: 12px;"></i> Registrar Pago
+                            </a>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <a href="{% url 'cartera_activa' %}" 
+                                class="btn btn-block btn-outline-dark text-left p-2 d-flex align-items-center" 
+                                style="border-radius: 8px; font-weight: 600;">
+                                <i class="fas fa-chart-pie" style="margin-right: 12px;"></i> Cartera Activa
+                            </a>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <a href="{% url 'reporte_utilidades' %}" 
+                                class="btn btn-block btn-outline-secondary text-left p-2 d-flex align-items-center" 
+                                style="border-radius: 8px; font-weight: 600;">
+                                <i class="fas fa-chart-line" style="margin-right: 12px;"></i> Utilidades
+                            </a>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <a href="{% url 'cartera_activa' %}?estado=riesgo" 
+                                class="btn btn-block btn-outline-danger text-left p-2 d-flex align-items-center" 
+                                style="border-radius: 8px; font-weight: 600;">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: 12px;"></i> Ver Morosos
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIDEBAR DERECHO: ACCIONES RECIENTES -->
+        <div class="col-lg-3 col-12">
+            <div class="card border-0 shadow-sm" style="background: rgba(255, 255, 255, 0.95); border-radius: 12px;">
+                <div class="card-header border-0 bg-transparent pt-3 pb-0">
+                    <h5 class="font-weight-bold text-dark m-0" style="font-size: 0.95rem;">
+                        <i class="fas fa-history text-info mr-2" style="margin-right: 8px;"></i>Acciones Recientes
+                    </h5>
+                </div>
+                <div class="card-body p-3">
+                    {% load log %}
+                    {% get_admin_log 6 as admin_log for_user user %}
+                    {% if not admin_log %}
+                        <p class="text-muted small m-0">No hay acciones recientes.</p>
+                    {% else %}
+                        <ul class="list-unstyled mb-0">
+                            {% for entry in admin_log %}
+                                <li class="mb-2 pb-2 border-bottom">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="font-weight-bold text-dark">{{ entry.content_type }}</small>
+                                        <small class="text-muted" style="font-size: 0.7rem;">
+                                            {% if entry.is_addition %}<span class="badge badge-success">Añadido</span>{% endif %}
+                                            {% if entry.is_change %}<span class="badge badge-info">Editado</span>{% endif %}
+                                            {% if entry.is_deletion %}<span class="badge badge-danger">Eliminado</span>{% endif %}
+                                        </small>
+                                    </div>
+                                    <div class="small text-secondary text-truncate" style="max-width: 180px;">
+                                        {{ entry.object_repr }}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
