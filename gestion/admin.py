@@ -73,6 +73,9 @@ class PrestamoAdmin(admin.ModelAdmin):
     readonly_fields = ('codigo_tramite', 'saldo_actual')
     actions = ['ejecutar_refinanciamiento_action']
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('cliente')
+
     @admin.display(description='Monto Prestado')
     def monto_prestado_format(self, obj):
         return f"${obj.monto_prestado:,.2f}"
@@ -133,18 +136,6 @@ class PrestamoAdmin(admin.ModelAdmin):
                 )
 
 
-import calendar
-import datetime
-import urllib.parse
-from django.contrib import admin
-from django.http import Http404, HttpResponse
-from django.urls import path
-from django.utils.html import format_html
-from django.utils.safestring import mark_safe
-from django.views.decorators.clickjacking import xframe_options_sameorigin
-from .models import Transaccion
-
-
 @admin.register(Transaccion)
 class TransaccionAdmin(admin.ModelAdmin):
     list_display = (
@@ -165,6 +156,9 @@ class TransaccionAdmin(admin.ModelAdmin):
         'monto_abonado_capital',
         'interes_atrasado',
     )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('prestamo', 'prestamo__cliente')
 
     def get_fields(self, request, obj=None):
         if obj is None:
@@ -581,11 +575,6 @@ class ConfiguracionFinancieraAdmin(admin.ModelAdmin):
         )
     capital_base_field.short_description = "Capital Base Inicial"
 
-    def save_model(self, request, obj, form, change):
-        if 'capital_base' in request.POST:
-            obj.capital_base = request.POST['capital_base']
-        super().save_model(request, obj, form, change)
-
     def has_add_permission(self, request):
         if ConfiguracionFinanciera.objects.exists():
             return False
@@ -601,12 +590,6 @@ class ConfiguracionFinancieraAdmin(admin.ModelAdmin):
         js = ('admin/js/config_inline_edit.js',)
 
 
-from django.contrib import admin
-from django.utils.html import format_html
-from django.utils.safestring import mark_safe
-from .models import HistorialAuditoria
-
-
 @admin.register(HistorialAuditoria)
 class HistorialAuditoriaAdmin(admin.ModelAdmin):
     list_display = ('fecha_hora', 'usuario_formateado', 'accion_badge', 'tabla', 'descripcion')
@@ -615,7 +598,7 @@ class HistorialAuditoriaAdmin(admin.ModelAdmin):
     readonly_fields = ('usuario', 'tabla', 'accion', 'descripcion', 'fecha_hora')
 
     def has_add_permission(self, request):
-        return False  # La auditoría es solo lectura
+        return False
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -623,14 +606,12 @@ class HistorialAuditoriaAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    # OPCIÓN 1: Usar mark_safe cuando solo renderizas HTML estático
     @admin.display(description='Usuario')
     def usuario_formateado(self, obj):
         if obj.usuario:
             return mark_safe(f'<strong>{obj.usuario.username}</strong>')
         return mark_safe('<em>Sistema</em>')
 
-    # OPCIÓN 2: Usar format_html pasando parámetros como argumentos adicionales ({} -> argumento)
     @admin.display(description='Acción')
     def accion_badge(self, obj):
         colores = {
@@ -640,7 +621,6 @@ class HistorialAuditoriaAdmin(admin.ModelAdmin):
         }
         color = colores.get(obj.accion, '#6c757d')
         
-        # Corrección: El texto y el color se pasan como parámetros a format_html
         return format_html(
             '<span style="background-color: {}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">{}</span>',
             color,

@@ -24,21 +24,17 @@ def dashboard_admin(request):
     """
     hoy = now().date()
 
-    # 1. Cartera Activa: Saldo total acumulado prestado
     cartera_activa = Prestamo.objects.filter(activo=True, saldo_actual__gt=0).aggregate(
         total=Sum('saldo_actual')
     )['total'] or Decimal('0.00')
 
-    # 2. Cobros del Día: Suma directa de recaudación real
     transacciones_hoy = Transaccion.objects.filter(fecha=hoy)
 
     cobros_dia = transacciones_hoy.aggregate(
         total=Coalesce(
             Sum(
                 Case(
-                    # Refinanciamiento: extrae únicamente la ganancia de interés
                     When(tipo='REFINANCIAMIENTO', then=Coalesce(F('interes_atrasado'), Decimal('0.00'))),
-                    # Pagos de cuotas ordinarias: suma el monto cobrado
                     default=F('monto'),
                     output_field=DecimalField()
                 )
@@ -49,11 +45,9 @@ def dashboard_admin(request):
 
     cant_transacciones_hoy = transacciones_hoy.count()
 
-    # 3. Créditos en Mora
-    prestamos_activos = Prestamo.objects.filter(activo=True, saldo_actual__gt=0)
+    prestamos_activos = Prestamo.objects.select_related('cliente').filter(activo=True, saldo_actual__gt=0)
     prestamos_mora = sum(1 for p in prestamos_activos if p.en_mora)
 
-    # 4. Logs de Auditoría
     log_entries = LogEntry.objects.select_related('content_type', 'user')
 
     context = {
@@ -77,11 +71,9 @@ def cartera_activa_view(request):
     hoy = now().date()
     estado_filtro = request.GET.get('estado', 'todos')
 
-    # Base de préstamos
     todos_prestamos = Prestamo.objects.select_related('cliente').prefetch_related('transacciones')
     prestamos_activos = todos_prestamos.filter(activo=True, saldo_actual__gt=0)
 
-    # 1. MÉTRICAS SUPERIORES
     capital_colocado = prestamos_activos.aggregate(
         total=Sum('saldo_actual')
     )['total'] or Decimal('0.00')
@@ -100,7 +92,6 @@ def cartera_activa_view(request):
         promedio=Avg('porcentaje_interes')
     )['promedio'] or Decimal('0.00')
 
-    # 2. FILTRADO POR PESTAÑAS (SEGMENTACIÓN)
     if estado_filtro == 'al_dia':
         lista_prestamos = [p for p in prestamos_activos if not p.en_mora and p.dias_sin_pagar <= 30]
     elif estado_filtro == 'pre_mora':
@@ -140,10 +131,8 @@ def obtener_mora_prestamo(request, prestamo_id):
     try:
         prestamo = get_object_or_404(Prestamo, id=prestamo_id)
 
-        # 1. Cálculo de mora/interés atrasado
         mora_val = Decimal(getattr(prestamo, 'interes_atrasado_acumulado', Decimal('0.00'))) if prestamo.en_mora else Decimal('0.00')
 
-        # 2. Cálculo del interés corriente del período actual (Saldo * Tasa %)
         saldo = Decimal(str(getattr(prestamo, 'saldo_actual', '0.00')))
         tasa = Decimal(str(getattr(prestamo, 'porcentaje_interes', '0.00'))) / Decimal('100.00')
         interes_corriente_val = saldo * tasa
@@ -163,20 +152,19 @@ def obtener_mora_prestamo(request, prestamo_id):
         )
 
 
-@login_required
+@staff_member_required
 def reporte_utilidades(request):
     """
-    Vista del reporte detallado de utilidades.
+    Vista del reporte detallado de utilidades (Acceso restringido a administradores/staff).
     """
     config = ConfiguracionFinanciera.objects.first()
     CAPITAL_BASE_INICIAL = Decimal(str(config.capital_base)) if config else Decimal('200.00')
 
-    prestamos_activos = Prestamo.objects.filter(activo=True, saldo_actual__gt=0)
+    prestamos_activos = Prestamo.objects.select_related('cliente').filter(activo=True, saldo_actual__gt=0)
     capital_en_calle = prestamos_activos.aggregate(
         total=Sum('saldo_actual')
     )['total'] or Decimal('0.00')
 
-    # Filtrar únicamente pagos de cuotas para calcular lo cobrado en caja
     pagos_cuotas = Transaccion.objects.filter(tipo='PAGO_CUOTA')
 
     capital_retornado = pagos_cuotas.aggregate(
@@ -187,11 +175,7 @@ def reporte_utilidades(request):
         total=Sum('monto')
     )['total'] or Decimal('0.00')
 
-    # Utilidad real cobrada = (Monto total recibido en pagos de cuotas) - (Abonos reales a capital)
-    # Esto incluye automáticamente tanto el interés corriente como el interés por mora/atraso cobrado.
     utilidad_real_cobrada = total_cobrado_efectivo - capital_retornado
-
-    # Capital disponible actual en caja (Sin incluir las utilidades cobradas)
     capital_disponible = CAPITAL_BASE_INICIAL - capital_en_calle
 
     prestamos_con_interes = prestamos_activos.filter(porcentaje_interes__gt=0)

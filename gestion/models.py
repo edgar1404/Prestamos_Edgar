@@ -3,7 +3,7 @@ import calendar
 import datetime
 import os
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from urllib.parse import quote
 
 from django.conf import settings
@@ -14,19 +14,14 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
-from PIL import Image, ImageDraw
 
 
-# ==========================================
-# 1. MODELO CLIENTE
-# ==========================================
 class Cliente(models.Model):
     nombre = models.CharField(max_length=150, verbose_name="Nombre Completo")
     identificacion = models.CharField(max_length=50, blank=True, null=True, verbose_name="Cédula / ID")
     telefono = models.CharField(max_length=20, blank=True, null=True, verbose_name="Teléfono / WhatsApp")
     tope_credito = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Límite de Crédito ($)")
     
-    # Documentos de Identidad
     cedula_frontal = models.ImageField(upload_to='clientes/cedulas/', null=True, blank=True, verbose_name="Cédula (Parte Frontal)")
     cedula_trasera = models.ImageField(upload_to='clientes/cedulas/', null=True, blank=True, verbose_name="Cédula (Parte Trasera)")
     
@@ -41,9 +36,6 @@ class Cliente(models.Model):
         return self.nombre
 
 
-# ==========================================
-# 2. MODELO PRESTAMO
-# ==========================================
 class Prestamo(models.Model):
     TASAS_CHOICES = [
         (Decimal('0.00'), '0% Sin Interés'),
@@ -147,7 +139,6 @@ class Prestamo(models.Model):
             .first()
         )
         
-        # Si la última transacción dejó mora explícita grabada, la tomamos como base
         mora_guardada = (
             Decimal(str(ultima_transaccion.interes_atrasado))
             if ultima_transaccion and getattr(ultima_transaccion, 'interes_atrasado', None)
@@ -158,7 +149,8 @@ class Prestamo(models.Model):
         tasa_decimal = Decimal(str(self.porcentaje_interes)) / Decimal('100.00')
         interes_por_quincena = Decimal(str(self.saldo_actual)) * tasa_decimal
 
-        return round(mora_guardada + (interes_por_quincena * Decimal(str(quincenas))), 2)
+        total = mora_guardada + (interes_por_quincena * Decimal(str(quincenas)))
+        return total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     @property
     def en_mora(self):
@@ -213,9 +205,6 @@ class Prestamo(models.Model):
         return self.activo and self.saldo_actual > Decimal('0.00') and self.dias_sin_pagar > 30
 
 
-# ==========================================
-# 3. MODELO TRANSACCION
-# ==========================================
 class Transaccion(models.Model):
     TIPO_CHOICES = [
         ('PAGO_CUOTA', 'Pago de Cuota / Abono'),
@@ -239,6 +228,7 @@ class Transaccion(models.Model):
     def __str__(self):
         return f'{self.get_tipo_display()} - ${self.monto} ({self.fecha})'
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         es_nuevo = self.pk is None
 
@@ -247,17 +237,15 @@ class Transaccion(models.Model):
             monto_disponible = Decimal(str(self.monto or '0.00'))
 
             if self.tipo == 'PAGO_CUOTA':
-                # Cálculo de interés acumulado (atrasado + corriente)
                 mora_pendiente = Decimal(str(prestamo.interes_atrasado_acumulado or '0.00'))
                 
-                # Interés corriente de la quincena en curso
                 tasa_decimal = Decimal(str(prestamo.porcentaje_interes)) / Decimal('100.00')
                 interes_corriente = Decimal(str(prestamo.saldo_actual)) * tasa_decimal
 
                 if not self.cobrar_mora:
                     mora_pendiente = Decimal('0.00')
 
-                total_interes_debido = round(interes_corriente + mora_pendiente, 2)
+                total_interes_debido = (interes_corriente + mora_pendiente).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
                 if monto_disponible >= total_interes_debido:
                     excedente_capital = monto_disponible - total_interes_debido
@@ -296,8 +284,8 @@ class Transaccion(models.Model):
         saldo_anterior = self.prestamo.saldo_actual + self.monto_abonado_capital
         interes_pagado = self.monto - self.monto_abonado_capital
 
-        tasa_decimal = float(self.prestamo.porcentaje_interes) / 100.0
-        proximo_interes = float(self.prestamo.saldo_actual) * tasa_decimal
+        tasa_decimal = self.prestamo.porcentaje_interes / Decimal('100.00')
+        proximo_interes = (self.prestamo.saldo_actual * tasa_decimal).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
         ticket = (
             '*COMPROBANTE DE PAGO*\n'
@@ -326,9 +314,6 @@ class Transaccion(models.Model):
         return f'https://wa.me/{telefono_limpio}?text={quote(texto)}'
 
 
-# ==========================================
-# 4. AUDITORÍA Y CONFIGURACIÓN FINANCIERA
-# ==========================================
 class HistorialAuditoria(models.Model):
     ACCIONES = (
         ('CREACION', 'Creación'),
@@ -389,9 +374,6 @@ def reversar_transaccion_al_eliminar(sender, instance, **kwargs):
     )
 
 
-# ==========================================
-# 5. DEDUCCIÓN DE SOCIOS
-# ==========================================
 class Socio(models.Model):
     nombre = models.CharField(max_length=100)
     identificacion = models.CharField(max_length=20, blank=True, null=True)
