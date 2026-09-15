@@ -24,13 +24,29 @@ from .models import (
 @admin.register(Cliente)
 class ClienteAdmin(admin.ModelAdmin):
     list_display = (
+        'numero_fila',
         'nombre',
         'identificacion',
         'telefono',
         'tope_credito',
         'creado_en',
     )
+    # Define explícitamente que el link para abrir el perfil está en la columna 'nombre'
+    list_display_links = ('nombre',)
     search_fields = ('nombre', 'identificacion', 'telefono')
+
+    def changelist_view(self, request, extra_context=None):
+        # Reiniciar el contador en cada carga de la vista
+        self._contador_fila = 0
+        return super().changelist_view(request, extra_context=extra_context)
+
+    @admin.display(description='#')
+    def numero_fila(self, obj):
+        # Incrementa secuencialmente por cada fila renderizada
+        if not hasattr(self, '_contador_fila'):
+            self._contador_fila = 0
+        self._contador_fila += 1
+        return self._contador_fila
 
 
 class EstadoMoraFilter(admin.SimpleListFilter):
@@ -692,3 +708,21 @@ class SocioAdmin(admin.ModelAdmin):
             '<a class="button" href="/socio/{}/pdf/" target="_blank" style="background-color: #0284c7; color: white; font-weight: bold; padding: 4px 10px; border-radius: 4px; text-decoration: none;">PDF</a>',
             obj.id
         )
+
+
+
+
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
+
+# Desregistrar la vista predeterminada de User
+admin.site.unregister(User)
+
+# Registrar User con el CSS personalizado
+@admin.register(User)
+class CustomUserAdmin(BaseUserAdmin):
+    class Media:
+        css = {
+            'all': ('admin/css/admin_custom.css',)
+        }

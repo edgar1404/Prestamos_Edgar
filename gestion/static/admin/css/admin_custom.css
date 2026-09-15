@@ -1,0 +1,75 @@
+/* Forzar que la fila del formulario ocupe todo el ancho */
+.field-user_permissions,
+.field-groups,
+.form-row.field-user_permissions,
+.form-row.field-groups {
+    width: 100% !important;
+    max-width: 100% !important;
+    clear: both !important;
+    display: block !important;
+}
+
+/* Contenedor principal del widget */
+.selector {
+    width: 100% !important;
+    max-width: 1000px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 20px !important;
+    margin-top: 10px !important;
+}
+
+/* Columnas de selección (Disponible y Elegidos) */
+.selector-available,
+.selector-chosen {
+    width: 45% !important;
+    min-width: 300px !important;
+    float: none !important;
+    margin: 0 !important;
+}
+
+/* Listas desplegables */
+.selector select {
+    width: 100% !important;
+    height: 300px !important;
+    font-size: 13px !important;
+    padding: 6px !important;
+}
+
+/* Botones centrales de mover permisos */
+.selector-chooser {
+    width: 10% !important;
+    min-width: 100px !important;
+    float: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+}
+
+.selector-chooser li {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+
+.selector-chooser a {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+}
+
+/* Cuadro de filtro */
+.selector .selector-filter input {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 5px !important;
+}
