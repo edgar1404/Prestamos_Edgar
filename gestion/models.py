@@ -271,7 +271,31 @@ class Transaccion(models.Model):
 
             prestamo.save()
 
-        super().save(*args, **kwargs)
+
+
+
+    @transaction.atomic
+    def delete(self, *args, **kwargs):
+        if self.prestamo:
+            prestamo = self.prestamo
+
+            if self.tipo in ['PAGO_CUOTA', 'ABONO_CAPITAL']:
+                # Si se elimina un pago o abono, se devuelve el capital abonado al saldo
+                monto_abonado = Decimal(str(self.monto_abonado_capital or '0.00'))
+                prestamo.saldo_actual += monto_abonado
+
+            elif self.tipo == 'REFINANCIAMIENTO':
+                # Si se elimina un refinanciamiento, se resta el capital que se había sumado
+                monto_adicional = Decimal(str(self.monto_abonado_capital or '0.00'))
+                prestamo.saldo_actual = max(
+                    Decimal('0.00'),
+                    Decimal(str(prestamo.saldo_actual)) - monto_adicional
+                )
+
+            prestamo.save()
+
+        super().delete(*args, **kwargs)
+
 
     def generar_ticket_whatsapp(self):
         cliente_nombre = self.prestamo.cliente.nombre
