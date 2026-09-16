@@ -14,7 +14,7 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.timezone import now
-
+from datetime import date, timedelta
 
 class Cliente(models.Model):
     nombre = models.CharField(max_length=150, verbose_name="Nombre Completo")
@@ -87,7 +87,7 @@ class Prestamo(models.Model):
             fecha_hasta = now().date()
 
         ultima_transaccion = (
-            self.transacciones.filter(tipo='PAGO_CUOTA')
+            self.transacciones.filter(tipo__in=['PAGO_CUOTA', 'REFINANCIAMIENTO'])
             .order_by('-fecha', '-id')
             .first()
         )
@@ -100,64 +100,44 @@ class Prestamo(models.Model):
         if not fecha_referencia or fecha_hasta <= fecha_referencia:
             return 0
 
-        quincenas = 0
-        year = fecha_referencia.year
-        month = fecha_referencia.month
-
-        while True:
-            corte_15 = date(year, month, 15)
-            if fecha_referencia < corte_15 and fecha_hasta >= corte_15:
-                quincenas += 1
-
-            if month == 12:
-                next_year = year + 1
-                next_month = 1
-            else:
-                next_year = year
-                next_month = month + 1
-
-            corte_30 = date(year, month, calendar.monthrange(year, month)[1])
-            if fecha_referencia < corte_30 and fecha_hasta >= corte_30:
-                quincenas += 1
-
-            year = next_year
-            month = next_month
-
-            if date(year, month, 1) > fecha_hasta:
-                break
-
-        return quincenas
+        # Calcula directamente las quincenas completas de 15 días sin avanzar al siguiente ciclo
+        dias_diferencia = (fecha_hasta - fecha_referencia).days
+        return max(0, dias_diferencia // 15)
 
     @property
     def interes_atrasado_acumulado(self):
-        if not self.activo or (self.saldo_actual and self.saldo_actual <= 0):
+        """
+        Calcula el interés atrasado sin incluir el interés corriente del período actual.
+        """
+        if not self.activo or (self.saldo_actual and self.saldo_actual <= Decimal('0.00')):
             return Decimal('0.00')
 
         ultima_transaccion = (
-            self.transacciones.filter(tipo='PAGO_CUOTA')
+            self.transacciones.filter(tipo__in=['PAGO_CUOTA', 'REFINANCIAMIENTO'])
             .order_by('-fecha', '-id')
             .first()
         )
-        
-        mora_guardada = (
-            Decimal(str(ultima_transaccion.interes_atrasado))
-            if ultima_transaccion and getattr(ultima_transaccion, 'interes_atrasado', None)
-            else Decimal('0.00')
-        )
 
-        quincenas = self.obtener_quincenas_pendientes()
+        if ultima_transaccion and getattr(ultima_transaccion, 'interes_atrasado', None) is not None:
+            return Decimal(str(ultima_transaccion.interes_atrasado)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # Quincenas totales transcurridas hasta hoy
+        quincenas_totales = self.obtener_quincenas_pendientes()
+
+        # Si hay quincenas pendientes, dejamos 1 para el 'Interés Corriente' y el resto a 'Mora Atrasada'
+        quincenas_atrasadas = max(0, quincenas_totales - 1)
+
         tasa_decimal = Decimal(str(self.porcentaje_interes)) / Decimal('100.00')
-        interes_por_quincena = Decimal(str(self.saldo_actual)) * tasa_decimal
+        mora = Decimal(str(self.saldo_actual)) * tasa_decimal * Decimal(str(quincenas_atrasadas))
 
-        total = mora_guardada + (interes_por_quincena * Decimal(str(quincenas)))
-        return total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return mora.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     @property
     def en_mora(self):
-        if not self.activo or (self.saldo_actual and self.saldo_actual <= 0):
+        if not self.activo or (self.saldo_actual and self.saldo_actual <= Decimal('0.00')):
             return False
 
-        return self.interes_atrasado_acumulado > Decimal('0.00')
+        return self.dias_sin_pagar > 15 or self.interes_atrasado_acumulado > Decimal('0.00')
 
     @transaction.atomic
     def aplicar_refinanciamiento(self, nuevo_monto_adicional=0, interes_pagado_efectivo=True):
@@ -237,40 +217,48 @@ class Transaccion(models.Model):
             monto_disponible = Decimal(str(self.monto or '0.00'))
 
             if self.tipo == 'PAGO_CUOTA':
-                mora_pendiente = Decimal(str(prestamo.interes_atrasado_acumulado or '0.00'))
-                
+                # 1. Calcular el interés corriente que le corresponde a la quincena sobre el saldo actual
                 tasa_decimal = Decimal(str(prestamo.porcentaje_interes)) / Decimal('100.00')
-                interes_corriente = Decimal(str(prestamo.saldo_actual)) * tasa_decimal
+                interes_corriente_quincena = Decimal(str(prestamo.saldo_actual)) * tasa_decimal
+
+                # 2. Consultar si traía mora no pagada de la última transacción
+                ultima_trans = prestamo.transacciones.filter(
+                    tipo__in=['PAGO_CUOTA', 'REFINANCIAMIENTO']
+                ).exclude(pk=self.pk).order_by('-fecha', '-id').first()
+
+                mora_previa = Decimal(str(ultima_trans.interes_atrasado)) if ultima_trans else Decimal('0.00')
+
+                # Total de interés/mora obligatoria a cobrar en esta fecha
+                interes_total = interes_corriente_quincena + mora_previa
 
                 if not self.cobrar_mora:
-                    mora_pendiente = Decimal('0.00')
+                    interes_total = Decimal('0.00')
 
-                total_interes_debido = (interes_corriente + mora_pendiente).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-                if monto_disponible >= total_interes_debido:
-                    excedente_capital = monto_disponible - total_interes_debido
-                    self.monto_abonado_capital = excedente_capital
+                # 3. Descontar del dinero entregado
+                if monto_disponible >= interes_total:
+                    excedente_capital = monto_disponible - interes_total
                     self.interes_atrasado = Decimal('0.00')
-                    prestamo.saldo_actual -= excedente_capital
+                    self.monto_abonado_capital = excedente_capital
+                    
+                    # Restar del saldo de capital únicamente el remanente
+                    prestamo.saldo_actual = max(
+                        Decimal('0.00'), 
+                        Decimal(str(prestamo.saldo_actual)) - excedente_capital
+                    )
                 else:
-                    self.interes_atrasado = total_interes_debido - monto_disponible
+                    # Si no cubre el interés del período, lo faltante queda registrado como mora pendiente
+                    self.interes_atrasado = (interes_total - monto_disponible).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
                     self.monto_abonado_capital = Decimal('0.00')
 
-                if prestamo.saldo_actual < Decimal('0.00'):
-                    prestamo.saldo_actual = Decimal('0.00')
-
             elif self.tipo == 'REFINANCIAMIENTO':
-                interes_pendiente = Decimal(str(prestamo.interes_atrasado_acumulado or 0))
+                interes_pendiente = Decimal(str(prestamo.interes_atrasado_acumulado or '0.00'))
 
                 if Decimal('0.00') < interes_pendiente <= monto_disponible:
-                    self.interes_atrasado = interes_pendiente
+                    self.interes_atrasado = Decimal('0.00')
                 else:
-                    self.interes_atrasado = monto_disponible
+                    self.interes_atrasado = max(Decimal('0.00'), interes_pendiente - monto_disponible)
 
-                capital_adicional = monto_disponible - self.interes_atrasado
-                if capital_adicional < Decimal('0.00'):
-                    capital_adicional = Decimal('0.00')
-
+                capital_adicional = max(Decimal('0.00'), monto_disponible - interes_pendiente)
                 self.monto_abonado_capital = capital_adicional
                 prestamo.saldo_actual += capital_adicional
 
@@ -417,3 +405,35 @@ class DeduccionSocio(models.Model):
 
     def __str__(self):
         return f"{self.concepto} (${self.monto}) - {self.socio.nombre}"
+
+
+class ConfiguracionEmpresa(models.Model):
+    nombre_empresa = models.CharField(
+        max_length=100, 
+        default="Financiera La Dorada", 
+        verbose_name="Nombre de la Empresa"
+    )
+    logo = models.ImageField(
+        upload_to="empresa/", 
+        blank=True, 
+        null=True, 
+        verbose_name="Logo de la Empresa"
+    )
+    telefono = models.CharField(
+        max_length=20, 
+        blank=True, 
+        null=True, 
+        verbose_name="Teléfono / WhatsApp de Contacto"
+    )
+    direccion = models.TextField(
+        blank=True, 
+        null=True, 
+        verbose_name="Dirección Física"
+    )
+
+    class Meta:
+        verbose_name = "Administración de la Página"
+        verbose_name_plural = "Administración de la Página"
+
+    def __str__(self):
+        return self.nombre_empresa

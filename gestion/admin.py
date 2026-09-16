@@ -1,8 +1,11 @@
 import calendar
 import datetime
 import urllib.parse
+from decimal import Decimal
 
 from django.contrib import admin, messages
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
@@ -12,6 +15,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from .models import (
     Cliente,
+    ConfiguracionEmpresa,
     ConfiguracionFinanciera,
     DeduccionSocio,
     HistorialAuditoria,
@@ -31,18 +35,15 @@ class ClienteAdmin(admin.ModelAdmin):
         'tope_credito',
         'creado_en',
     )
-    # Define explícitamente que el link para abrir el perfil está en la columna 'nombre'
     list_display_links = ('nombre',)
     search_fields = ('nombre', 'identificacion', 'telefono')
 
     def changelist_view(self, request, extra_context=None):
-        # Reiniciar el contador en cada carga de la vista
         self._contador_fila = 0
         return super().changelist_view(request, extra_context=extra_context)
 
     @admin.display(description='#')
     def numero_fila(self, obj):
-        # Incrementa secuencialmente por cada fila renderizada
         if not hasattr(self, '_contador_fila'):
             self._contador_fila = 0
         self._contador_fila += 1
@@ -107,26 +108,23 @@ class PrestamoAdmin(admin.ModelAdmin):
     @admin.display(description='Interés Pendiente')
     def interes_pendiente_format(self, obj):
         monto = obj.interes_atrasado_acumulado
-        if monto > 0:
+        if monto > Decimal('0.00'):
             monto_str = f"${monto:,.2f}"
             return format_html('<span style="color: #e11d48; font-weight: bold;">{}</span>', monto_str)
-        return format_html('<span style="color: #10b981;">$0.00</span>')
+        # CORREGIDO: Se pasa "$0.00" como argumento a format_html para evitar TypeError en Django 6
+        return format_html('<span style="color: #10b981;">{}</span>', '$0.00')
 
     @admin.display(description='¿En Mora?')
     def mostrar_en_mora(self, obj):
-        en_mora = getattr(obj, 'en_mora', False)
-        if callable(en_mora):
-            en_mora = en_mora()
-
-        if en_mora:
-            return format_html('<span style="color: #dc2626; font-weight: bold;">{}</span>', 'Sí')
-        return format_html('<span style="color: #16a34a; font-weight: bold;">{}</span>', 'No')
+        texto = "Sí" if obj.en_mora else "No"
+        color = "#dc2626" if obj.en_mora else "#16a34a"
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, texto)
 
     @admin.display(description='Activo')
     def mostrar_activo(self, obj):
-        if obj.activo:
-            return format_html('<span style="color: #16a34a; font-weight: bold;">{}</span>', 'Sí')
-        return format_html('<span style="color: #dc2626; font-weight: bold;">{}</span>', 'No')
+        texto = "Sí" if obj.activo else "No"
+        color = "#16a34a" if obj.activo else "#dc2626"
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, texto)
 
     @admin.action(description="🔄 Aplicar Refinanciamiento (Consolidar interés y actualizar cartera)")
     def ejecutar_refinanciamiento_action(self, request, queryset):
@@ -200,14 +198,16 @@ class TransaccionAdmin(admin.ModelAdmin):
         mora_inicial = '$0.00'
         interes_inicial = '$0.00'
 
-        if obj and obj.pk and obj.prestamo:
-            val_mora = getattr(obj.prestamo, 'interes_atrasado_acumulado', 0)
-            mora_inicial = f'${val_mora:.2f}'
+        prestamo_obj = getattr(obj, 'prestamo', None) if obj else None
 
-            tasa = float(getattr(obj.prestamo, 'porcentaje_interes', 0)) / 100.0
-            saldo = float(getattr(obj.prestamo, 'saldo_actual', 0))
+        if prestamo_obj:
+            val_mora = prestamo_obj.interes_atrasado_acumulado
+            mora_inicial = f'${val_mora:,.2f}'
+
+            tasa = Decimal(str(prestamo_obj.porcentaje_interes)) / Decimal('100.00')
+            saldo = Decimal(str(prestamo_obj.saldo_actual or 0))
             val_interes = saldo * tasa
-            interes_inicial = f'${val_interes:.2f}'
+            interes_inicial = f'${val_interes:,.2f}'
 
         html_content = f'''
         <div id="mora-container-wrapper" style="display: flex; gap: 25px; align-items: center;">
@@ -710,19 +710,25 @@ class SocioAdmin(admin.ModelAdmin):
         )
 
 
-
-
-from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import User
-
-# Desregistrar la vista predeterminada de User
 admin.site.unregister(User)
 
-# Registrar User con el CSS personalizado
+
 @admin.register(User)
 class CustomUserAdmin(BaseUserAdmin):
     class Media:
         css = {
             'all': ('admin/css/admin_custom.css',)
         }
+
+
+@admin.register(ConfiguracionEmpresa)
+class ConfiguracionEmpresaAdmin(admin.ModelAdmin):
+    list_display = ('nombre_empresa', 'telefono', 'direccion')
+
+    def has_add_permission(self, request):
+        if ConfiguracionEmpresa.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return False

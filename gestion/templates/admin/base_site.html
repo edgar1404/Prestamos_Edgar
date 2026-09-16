@@ -3,7 +3,25 @@
 
 {% block brand_logo %}
 <a href="{% url 'admin:index' %}" class="brand-link">
-    <img src="{% static 'img/mi_logo.png' %}" alt="Financiera La Dorada" class="brand-image img-circle elevation-3" style="opacity: .8">
-    <span class="brand-text font-weight-light">Financiera La Dorada</span>
+    {% if empresa and empresa.logo %}
+        <img src="{{ empresa.logo.url }}" alt="{{ empresa.nombre_empresa }}" class="brand-image img-circle elevation-3" style="opacity: .8; max-height: 33px;">
+    {% else %}
+        <i class="fas fa-university text-warning" style="margin-left: 12px; margin-right: 8px;"></i>
+    {% endif %}
+    <span class="brand-text font-weight-bold" style="color: #ffffff;">
+        {{ empresa.nombre_empresa|default:"Financiera" }}
+    </span>
 </a>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var brandText = document.querySelector('.brand-link .brand-text');
+            if (brandText) {
+                brandText.textContent = "{{ empresa.nombre_empresa|default:'Financiera' }}";
+            }
+        });
+    </script>
 {% endblock %}

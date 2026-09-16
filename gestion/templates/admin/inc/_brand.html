@@ -1,0 +1,18 @@
+{% load static %}
+
+{% if not empresa %}
+    {% query "gestion.ConfiguracionEmpresa" "first" as empresa_db %}
+{% endif %}
+
+<a href="{% url 'admin:index' %}" class="brand-link">
+    {% with config=empresa|default:empresa_db %}
+        {% if config and config.logo %}
+            <img src="{{ config.logo.url }}" alt="{{ config.nombre_empresa }}" class="brand-image img-circle elevation-3" style="opacity: .8; max-height: 33px;">
+        {% else %}
+            <i class="fas fa-university text-warning" style="margin-left: 15px; margin-right: 10px;"></i>
+        {% endif %}
+        <span class="brand-text font-weight-bold" style="color: #ffffff;">
+            {{ config.nombre_empresa|default:"Financiera" }}
+        </span>
+    {% endwith %}
+</a>

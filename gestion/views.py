@@ -131,7 +131,7 @@ def obtener_mora_prestamo(request, prestamo_id):
     try:
         prestamo = get_object_or_404(Prestamo, id=prestamo_id)
 
-        mora_val = Decimal(getattr(prestamo, 'interes_atrasado_acumulado', Decimal('0.00'))) if prestamo.en_mora else Decimal('0.00')
+        mora_val = Decimal(str(getattr(prestamo, 'interes_atrasado_acumulado', '0.00')))
 
         saldo = Decimal(str(getattr(prestamo, 'saldo_actual', '0.00')))
         tasa = Decimal(str(getattr(prestamo, 'porcentaje_interes', '0.00'))) / Decimal('100.00')

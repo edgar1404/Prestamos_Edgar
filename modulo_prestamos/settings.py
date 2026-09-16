@@ -53,6 +53,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'gestion.context_processors.empresa_config',
             ],
         },
     },
@@ -128,13 +129,13 @@ JAZZMIN_SETTINGS = {
     'site_title': 'Sistema de Préstamos',
     'site_header': 'Gestión Financiera',
     
-    # Escribe aquí el texto EXACTO con mayúsculas y minúsculas que quieras mostrar:
-    'site_brand': 'Financiera La Dorada', 
+    # Nombre de reserva/activador para que Jazzmin renderice la esquina superior
+    'site_brand': 'Financiera', 
     
     'site_logo': None,
     'site_icon': None,
     'welcome_sign': 'Bienvenido al Sistema de Gestión',
-    'copyright': 'Financiera La Dorada - Todos los derechos reservados',
+    'copyright': 'Todos los derechos reservados',
     'search_model': 'gestion.Cliente',
     'topmenu_links': [
         {'name': 'Inicio', 'url': 'admin:index'},
@@ -144,7 +145,7 @@ JAZZMIN_SETTINGS = {
     'changeform_format': 'horizontal_tabs',
     'hide_recent_actions': False,
     
-    # Incrementamos la versión del CSS
+    # Mantener archivos estáticos de estilización personalizada
     'custom_css': 'admin/css/custom_admin.css?v=12',
     
     'custom_links': {
