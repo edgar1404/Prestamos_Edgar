@@ -87,7 +87,7 @@ class Prestamo(models.Model):
             fecha_hasta = now().date()
 
         ultima_transaccion = (
-            self.transacciones.filter(tipo__in=['PAGO_CUOTA', 'REFINANCIAMIENTO'])
+            self.transacciones.filter(tipo__in=['PAGO_CUOTA', 'ABONO_CAPITAL', 'REFINANCIAMIENTO'])
             .order_by('-fecha', '-id')
             .first()
         )
@@ -100,9 +100,45 @@ class Prestamo(models.Model):
         if not fecha_referencia or fecha_hasta <= fecha_referencia:
             return 0
 
-        # Calcula directamente las quincenas completas de 15 días sin avanzar al siguiente ciclo
         dias_diferencia = (fecha_hasta - fecha_referencia).days
         return max(0, dias_diferencia // 15)
+
+    @property
+    def interes_atrasado_acumulado(self):
+        if not self.activo or (self.saldo_actual and self.saldo_actual <= Decimal('0.00')):
+            return Decimal('0.00')
+
+        ultima_transaccion = (
+            self.transacciones.filter(tipo__in=['PAGO_CUOTA', 'ABONO_CAPITAL', 'REFINANCIAMIENTO'])
+            .order_by('-fecha', '-id')
+            .first()
+        )
+
+        if ultima_transaccion and getattr(ultima_transaccion, 'interes_atrasado', None) is not None:
+            return Decimal(str(ultima_transaccion.interes_atrasado)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        quincenas_totales = self.obtener_quincenas_pendientes()
+        quincenas_atrasadas = max(0, quincenas_totales - 1)
+
+        tasa_decimal = Decimal(str(self.porcentaje_interes)) / Decimal('100.00')
+        mora = Decimal(str(self.saldo_actual)) * tasa_decimal * Decimal(str(quincenas_atrasadas))
+
+        return mora.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @property
+    def dias_sin_pagar(self):
+        ultima_transaccion = self.transacciones.filter(
+            tipo__in=['PAGO_CUOTA', 'ABONO_CAPITAL', 'REFINANCIAMIENTO']
+        ).order_by('-fecha', '-id').first()
+
+        if ultima_transaccion and ultima_transaccion.fecha:
+            fecha_referencia = ultima_transaccion.fecha
+        else:
+            fecha_referencia = self.fecha_inicio
+
+        if fecha_referencia:
+            return (now().date() - fecha_referencia).days
+        return 0
 
     @property
     def interes_atrasado_acumulado(self):

@@ -152,8 +152,9 @@ class PrestamoAdmin(admin.ModelAdmin):
 @admin.register(Transaccion)
 class TransaccionAdmin(admin.ModelAdmin):
     list_display = (
+        'id',
         'prestamo',
-        'tipo',
+        'get_tipo_display',
         'monto',
         'interes_mora_cobrado',
         'monto_abonado_capital',
@@ -171,7 +172,6 @@ class TransaccionAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        # Muestra todos los tipos de transacciones (PAGO_CUOTA, ABONO_CAPITAL, REFINANCIAMIENTO)
         return super().get_queryset(request).select_related('prestamo', 'prestamo__cliente')
 
     def get_fields(self, request, obj=None):
@@ -195,22 +195,19 @@ class TransaccionAdmin(admin.ModelAdmin):
         )
 
     def interes_mora_cobrado(self, obj):
-        if not obj or obj.monto is None:
+        if not obj or not obj.monto or obj.tipo == 'ABONO_CAPITAL':
             return "$0.00"
-        
-        # Si es Abono a Capital Solo, el interés cobrado es $0.00 siempre
-        if obj.tipo == 'ABONO_CAPITAL':
+        try:
+            monto = Decimal(str(obj.monto))
+            capital = Decimal(str(obj.monto_abonado_capital or '0.00'))
+            interes = max(Decimal('0.00'), monto - capital)
+            return f"${interes:.2f}"
+        except Exception:
             return "$0.00"
-            
-        monto = Decimal(str(obj.monto or '0.00'))
-        capital = Decimal(str(obj.monto_abonado_capital or '0.00'))
-        interes = max(Decimal('0.00'), monto - capital)
-        return f"${interes:.2f}"
-    
+
     interes_mora_cobrado.short_description = "Interés/Mora Cobrado"
 
     def delete_queryset(self, request, queryset):
-        """Devuelve el capital al préstamo en eliminaciones masivas desde el admin"""
         for obj in queryset:
             obj.delete()
 
