@@ -188,6 +188,7 @@ class Prestamo(models.Model):
 class Transaccion(models.Model):
     TIPO_CHOICES = [
         ('PAGO_CUOTA', 'Pago de Cuota / Abono'),
+        ('ABONO_CAPITAL', 'Abono a Capital Solo'),
         ('REFINANCIAMIENTO', 'Refinanciamiento'),
     ]
 
@@ -216,37 +217,43 @@ class Transaccion(models.Model):
             prestamo = self.prestamo
             monto_disponible = Decimal(str(self.monto or '0.00'))
 
-            if self.tipo == 'PAGO_CUOTA':
-                # 1. Calcular el interés corriente que le corresponde a la quincena sobre el saldo actual
+            if self.tipo == 'ABONO_CAPITAL':
+                # El 100% va directo a reducir el saldo del capital
+                self.interes_atrasado = Decimal('0.00')
+                self.monto_abonado_capital = monto_disponible
+
+                prestamo.saldo_actual = max(
+                    Decimal('0.00'),
+                    Decimal(str(prestamo.saldo_actual)) - monto_disponible
+                )
+
+            elif self.tipo == 'PAGO_CUOTA':
+                # 1. Interés corriente de la quincena
                 tasa_decimal = Decimal(str(prestamo.porcentaje_interes)) / Decimal('100.00')
                 interes_corriente_quincena = Decimal(str(prestamo.saldo_actual)) * tasa_decimal
 
-                # 2. Consultar si traía mora no pagada de la última transacción
+                # 2. Consultar mora de la última transacción
                 ultima_trans = prestamo.transacciones.filter(
-                    tipo__in=['PAGO_CUOTA', 'REFINANCIAMIENTO']
+                    tipo__in=['PAGO_CUOTA', 'ABONO_CAPITAL', 'REFINANCIAMIENTO']
                 ).exclude(pk=self.pk).order_by('-fecha', '-id').first()
 
                 mora_previa = Decimal(str(ultima_trans.interes_atrasado)) if ultima_trans else Decimal('0.00')
-
-                # Total de interés/mora obligatoria a cobrar en esta fecha
                 interes_total = interes_corriente_quincena + mora_previa
 
                 if not self.cobrar_mora:
                     interes_total = Decimal('0.00')
 
-                # 3. Descontar del dinero entregado
+                # 3. Descontar del monto ingresado
                 if monto_disponible >= interes_total:
                     excedente_capital = monto_disponible - interes_total
                     self.interes_atrasado = Decimal('0.00')
                     self.monto_abonado_capital = excedente_capital
                     
-                    # Restar del saldo de capital únicamente el remanente
                     prestamo.saldo_actual = max(
                         Decimal('0.00'), 
                         Decimal(str(prestamo.saldo_actual)) - excedente_capital
                     )
                 else:
-                    # Si no cubre el interés del período, lo faltante queda registrado como mora pendiente
                     self.interes_atrasado = (interes_total - monto_disponible).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
                     self.monto_abonado_capital = Decimal('0.00')
 
